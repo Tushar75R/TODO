@@ -36,12 +36,14 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { name, password } = req.body;
+    console.log("login -> ", name, password);
     const user = await User.findOne({ name });
 
     if (!user) {
       return next(ErrorHandler("user not found", 404));
     }
     const isMatch = await compare(password, user.password);
+    console.log(isMatch);
     if (!isMatch) {
       return next(ErrorHandler("invalid credentials", 401));
     }
@@ -68,6 +70,26 @@ const login = async (req, res, next) => {
   }
 };
 
+const isAuth = async (req, res, next) => {
+  try {
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    return res.status(200).json({ success: true, message: "Authenticated" });
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+};
 const getTask = async (req, res, next) => {
   const id = req.user.id;
 
@@ -76,9 +98,10 @@ const getTask = async (req, res, next) => {
   if (!user) {
     return next(ErrorHandler("user not found", 404));
   }
+  console.log(user.task);
   return res
     .status(200)
-    .json({ sucess: true, message: "user logged in", task: user.task });
+    .json({ success: true, message: "user logged in", task: user.task });
 };
 
 const addTask = async (req, res, next) => {
@@ -89,6 +112,12 @@ const addTask = async (req, res, next) => {
     if (!user) {
       return next(ErrorHandler("user not found", 404));
     }
+
+    // Ensure dueDate is provided
+    if (!dueDate) {
+      return next(ErrorHandler("dueDate is required", 400));
+    }
+
     const newTask = new Task({
       title,
       description,
@@ -103,10 +132,10 @@ const addTask = async (req, res, next) => {
 
     return res
       .status(200)
-      .json({ sucess: true, message: "task added successfully" });
+      .json({ success: true, message: "task added successfully" });
   } catch (error) {
     console.log(error);
-    return ErrorHandler("error while adding task", 500);
+    return next(ErrorHandler("error while adding task", 500));
   }
 };
 
@@ -199,4 +228,5 @@ export {
   deleteTask,
   updateTask,
   searchTask,
+  isAuth,
 };
