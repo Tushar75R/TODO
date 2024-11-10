@@ -17,6 +17,8 @@ const taskSchema = new Schema(
     status: {
       type: String,
       required: true,
+      default: "panding",
+      enum: ["panding", "completed"],
     },
     dueDate: {
       type: Date,
